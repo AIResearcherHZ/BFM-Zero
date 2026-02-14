@@ -68,9 +68,8 @@ class RewardWrapperHV(BaseHumEnvBenchWrapper):
     max_workers: int
     process_executor: bool = False
     process_context: str = "spawn"
-    # env: Any = None
-    # env_model: str = "humanoidverse/data/robots/g1/g1_29dof_anneal_23dof.xml"
-    env_model: str = "humanoidverse/data/robots/g1/scene_flat_terrain_playground.xml"
+    # env_model默认为空，由调用方传入（支持G1和Taks_T1）
+    env_model: str = ""
 
     def reward_inference(self, task: str) -> torch.Tensor:
         if isinstance(self.env_model, str):

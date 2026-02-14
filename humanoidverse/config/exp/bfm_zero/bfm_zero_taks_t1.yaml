@@ -21,7 +21,7 @@ project_name: BFMZero
 
 robot:
   motion:
-    motion_file: data/lafan_29dof.pkl
+    motion_file: data/lafan_32dof.pkl
     max_len: 450
   asset:
     self_collisions: 0

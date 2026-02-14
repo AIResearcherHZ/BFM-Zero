@@ -45,7 +45,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
         config["env"]["lafan_tail_path"] = str(data_path)
 
     if not Path(config["env"]["lafan_tail_path"]).exists():
-        config["env"]["lafan_tail_path"] = "data/lafan_29dof.pkl"
+        _is_taks = any("taks" in o.lower() for o in config["env"].get("hydra_overrides", []) if o.startswith("robot="))
+        config["env"]["lafan_tail_path"] = "data/lafan_32dof.pkl" if _is_taks else "data/lafan_29dof.pkl"
 
     config["env"]["hydra_overrides"].append("env.config.max_episode_length_s=10000")
     config["env"]["hydra_overrides"].append(f"env.config.headless={headless}")

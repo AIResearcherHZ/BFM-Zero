@@ -122,9 +122,7 @@ class Genesis(BaseSimulator):
 
 
         asset_root = self.robot_cfg.asset.asset_root
-        # asset_file = self.robot_cfg.asset.urdf_file
         asset_file = self.robot_cfg.asset.xml_file
-        asset_file = 'g1/g1_29dof_old.xml'
         asset_path = os.path.join(asset_root, asset_file)
         # self.robot = self.scene.add_entity(
         #     gs.morphs.URDF(
@@ -146,9 +144,14 @@ class Genesis(BaseSimulator):
         )
 
 
-        asset_file = 'g1/scene_29dof.xml'
-        asset_path = os.path.join(asset_root, asset_file)
-        self.mj_model = mujoco.MjModel.from_xml_path(asset_path)
+        # 根据robot_type选择对应的scene XML
+        robot_type = self.robot_cfg.asset.robot_type
+        if "taks" in robot_type.lower():
+            _scene_file = 'Taks_T1/scene_Taks_T1.xml'
+        else:
+            _scene_file = 'g1/scene_29dof_freebase_mujoco.xml'
+        _scene_path = os.path.join(asset_root, _scene_file)
+        self.mj_model = mujoco.MjModel.from_xml_path(_scene_path)
         self.mj_model.opt.timestep = self.sim_dt
         self.mj_data = mujoco.MjData(self.mj_model)
         self.mj_viewer = mujoco.viewer.launch_passive(

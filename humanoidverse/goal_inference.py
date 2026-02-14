@@ -43,11 +43,14 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     if data_path is not None:
         config["env"]["lafan_tail_path"] = str(Path(data_path).resolve())
     elif not Path(config["env"].get("lafan_tail_path", "")).exists():
-        default_path = HUMANOIDVERSE_DIR / "data" / "lafan_29dof.pkl"
+        # 根据机器人类型选择对应的lafan数据
+        _is_taks = any("taks" in o.lower() for o in config["env"].get("hydra_overrides", []) if o.startswith("robot="))
+        _lafan_name = "lafan_32dof.pkl" if _is_taks else "lafan_29dof.pkl"
+        default_path = HUMANOIDVERSE_DIR / "data" / _lafan_name
         if default_path.exists():
             config["env"]["lafan_tail_path"] = str(default_path)
         else:
-            config["env"]["lafan_tail_path"] = "data/lafan_29dof.pkl"
+            config["env"]["lafan_tail_path"] = f"data/{_lafan_name}"
     # import ipdb; ipdb.set_trace()
     config["env"]["hydra_overrides"].append("env.config.max_episode_length_s=10000")
     config["env"]["hydra_overrides"].append(f"env.config.headless={headless}")
@@ -83,12 +86,20 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     print(env.config.simulator)
     print("-"*80)
     
-    # Try to find goal_frames JSON file
-    goal_json_paths = [
-        HUMANOIDVERSE_DIR / "data" / "robots" / "g1" / "goal_frames_lafan29dof.json",
-        HUMANOIDVERSE_DIR / "data" / "robots" / "Taks_T1" / "goal_frames_lafan29dof.json",
-        HUMANOIDVERSE_DIR / "data" / "goal_frames_lafan29dof.json",
-    ]
+    # 根据机器人类型优先搜索对应目录的goal_frames
+    _is_taks = any("taks" in o.lower() for o in _hydra_overrides if o.startswith("robot="))
+    if _is_taks:
+        goal_json_paths = [
+            HUMANOIDVERSE_DIR / "data" / "robots" / "Taks_T1" / "goal_frames_lafan29dof.json",
+            HUMANOIDVERSE_DIR / "data" / "robots" / "g1" / "goal_frames_lafan29dof.json",
+            HUMANOIDVERSE_DIR / "data" / "goal_frames_lafan29dof.json",
+        ]
+    else:
+        goal_json_paths = [
+            HUMANOIDVERSE_DIR / "data" / "robots" / "g1" / "goal_frames_lafan29dof.json",
+            HUMANOIDVERSE_DIR / "data" / "robots" / "Taks_T1" / "goal_frames_lafan29dof.json",
+            HUMANOIDVERSE_DIR / "data" / "goal_frames_lafan29dof.json",
+        ]
     goal_json = None
     for path in goal_json_paths:
         if path.exists():

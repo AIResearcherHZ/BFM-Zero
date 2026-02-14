@@ -24,6 +24,8 @@ from humenv.misc.motionlib import MotionBuffer
 
 from humanoidverse.utils.g1_env_config import G1EnvConfigsType
 
+# 默认G1 29DOF: 取obs state中的joint position部分(前29维 → 但代码截取23是旧版23DOF兼容)
+# 对于不同DOF机器人，此值应从env config推断
 QVEL_IDX: int = 23
 
 if Version("0.26") <= Version(gymnasium.__version__) < Version("1.0"):
@@ -45,6 +47,7 @@ def check_framestack_and_get_frames(env: gymnasium.Env):
 
     return None
 
+# G1/Taks_T1共享的body名称（用于tracking eval的xpos计算）
 xpos_bodies = [
     "pelvis",
     "left_hip_pitch_link",
@@ -77,6 +80,14 @@ xpos_bodies = [
     # "right_wrist_pitch_link",
     # "right_wrist_yaw_link",
 ]
+
+
+def get_qvel_idx(env_config) -> int:
+    """根据env config推断QVEL_IDX（obs中joint pos维度）"""
+    if hasattr(env_config, 'name') and 'taks' in env_config.name.lower():
+        return 32
+    # G1 默认
+    return QVEL_IDX
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -247,8 +258,12 @@ def _calc_metrics(ep, frame_stack: int | None):
         assert tracking_target.shape[-1] == 1, "Tracking target should have only one frame in the last dimension"
         tracking_target = tracking_target.squeeze(-1)
 
-    next_obs = torch.tensor(next_obs[:, :QVEL_IDX], dtype=torch.float32)
-    tracking_target = torch.tensor(tracking_target[:, :QVEL_IDX], dtype=torch.float32)
+    # 动态确定qvel_idx: 如果obs维度>=32则可能是Taks_T1
+    _qvel_idx = min(QVEL_IDX, next_obs.shape[-1])
+    if next_obs.shape[-1] >= 64:  # 32*2=64，Taks_T1 state维度
+        _qvel_idx = 32
+    next_obs = torch.tensor(next_obs[:, :_qvel_idx], dtype=torch.float32)
+    tracking_target = torch.tensor(tracking_target[:, :_qvel_idx], dtype=torch.float32)
 
     dist_prox_res = distance_proximity(next_obs=next_obs, tracking_target=tracking_target)
     metr.update(dist_prox_res)

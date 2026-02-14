@@ -62,3 +62,7 @@ class TaksT1EnvRandConfig(TaksT1EnvConfig):
 
 
 TaksT1EnvConfigsType = tp.Union[TaksT1EnvConfig, TaksT1EnvRandConfig]
+
+# 合并类型，使bench模块的G1EnvConfigsType也能接受Taks_T1配置
+# 因为TaksT1EnvConfig继承自G1EnvConfig，所以isinstance检查天然兼容
+AllEnvConfigsType = tp.Union[TaksT1EnvConfig, TaksT1EnvRandConfig]

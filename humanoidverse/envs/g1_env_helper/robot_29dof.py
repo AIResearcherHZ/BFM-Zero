@@ -8,6 +8,7 @@ import numpy as np
 from ml_collections.config_dict import config_dict
 
 from humanoidverse.utils.g1_env_config import get_g1_robot_xml_root
+from humanoidverse.utils.taks_t1_env_config import get_taks_t1_robot_xml_root
 from . import init, step
 from .base import G1Base
 from .robot import END_FREEJOINT_QPOS, END_FREEJOINT_QVEL, ObsModel
@@ -146,7 +147,12 @@ class G1Env29dof(G1Base):
         config: config_dict.ConfigDict = default_config_29dof(),
         config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
     ):
-        xml = get_g1_robot_xml_root() / "scene_29dof_freebase_noadditional_actuators.xml"
+        # 根据config中的robot_type选择对应的scene XML
+        _robot_type = getattr(config, 'robot_type', 'g1') if hasattr(config, 'robot_type') else 'g1'
+        if 'taks' in str(_robot_type).lower():
+            xml = get_taks_t1_robot_xml_root() / "scene_Taks_T1_noadditional_actuators.xml"
+        else:
+            xml = get_g1_robot_xml_root() / "scene_29dof_freebase_noadditional_actuators.xml"
         super().__init__(
             xml_path=xml,
             config=config,

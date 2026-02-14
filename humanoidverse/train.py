@@ -829,7 +829,8 @@ def train_bfm_zero_taks_t1():
         env=HumanoidVerseIsaacConfig(
             name='humanoidverse_isaac',
             device='cuda:0',
-            lafan_tail_path='humanoidverse/data/lafan_29dof_10s-clipped.pkl',
+            # 需先运行 python -m humanoidverse.data.convert_lafan_29dof_to_32dof 生成32dof数据
+            lafan_tail_path='humanoidverse/data/lafan_32dof_10s-clipped.pkl',
             enable_cameras=False,
             camera_render_save_dir='isaac_videos',
             max_episode_length_s=None,

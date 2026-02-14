@@ -100,6 +100,17 @@ python -m humanoidverse.reward_inference --model_folder /path/to/model --save_mp
                        Taks_T1 机器人 (32DOF) 使用说明
 ================================================================================
 
+【0. 数据准备（训练前必做）】
+# 将G1的29DOF lafan motion数据转换为Taks_T1的32DOF格式（末尾补3个neck零值）
+python -m humanoidverse.data.convert_lafan_29dof_to_32dof \
+    --input data/lafan_29dof.pkl \
+    --output data/lafan_32dof.pkl
+
+# 如果有10s-clipped版本也要转换
+python -m humanoidverse.data.convert_lafan_29dof_to_32dof \
+    --input humanoidverse/data/lafan_29dof_10s-clipped.pkl \
+    --output humanoidverse/data/lafan_32dof_10s-clipped.pkl
+
 【1. 训练 Taks_T1】
 # 方式一：使用预置的训练入口函数（推荐）
 python -c "from humanoidverse.train import train_bfm_zero_taks_t1; train_bfm_zero_taks_t1()"
@@ -153,10 +164,29 @@ python -m humanoidverse.reward_inference --model_folder /path/to/taks_t1_model -
 - 机器人资产:
   humanoidverse/data/robots/Taks_T1/Taks_T1.urdf
   humanoidverse/data/robots/Taks_T1/Taks_T1.xml
-  humanoidverse/data/robots/Taks_T1/scene_Taks_T1.xml
+  humanoidverse/data/robots/Taks_T1/scene_Taks_T1.xml                       (主scene)
+  humanoidverse/data/robots/Taks_T1/scene_Taks_T1_noadditional_actuators.xml (reward eval用)
+  humanoidverse/data/robots/Taks_T1/goal_frames_lafan29dof.json
 - Python配置:
-  humanoidverse/utils/taks_t1_env_config.py (MuJoCo评估环境)
-  humanoidverse/agents/evaluations/taks_t1env.py (评估配置)
+  humanoidverse/utils/taks_t1_env_config.py       (MuJoCo评估环境)
+  humanoidverse/agents/evaluations/taks_t1env.py   (评估配置)
+- 数据转换:
+  humanoidverse/data/convert_lafan_29dof_to_32dof.py  (29DOF→32DOF motion数据转换)
+- 修改过的通用代码（G1/Taks_T1共用，已支持动态选择）:
+  humanoidverse/simulator/mujoco/mujoco.py         (scene XML动态选择)
+  humanoidverse/simulator/genesis/genesis_mjdebug.py (genesis scene动态选择)
+  humanoidverse/envs/g1_env_helper/robot.py        (task_to_xml支持Taks_T1)
+  humanoidverse/envs/g1_env_helper/robot_random.py (terrain rand传config)
+  humanoidverse/envs/g1_env_helper/robot_29dof.py  (scene XML动态选择)
+  humanoidverse/envs/g1_env_helper/bench/tracking_eval.py    (QVEL_IDX动态化)
+  humanoidverse/envs/g1_env_helper/bench/tracking_eval_hv.py (QPOS动态化)
+  humanoidverse/envs/g1_env_helper/bench/reward_eval_hv.py   (scene路径参数化)
+  humanoidverse/agents/envs/humanoidverse_isaac.py (IsaacRenderer支持多DOF)
+  humanoidverse/utils/helpers.py                   (ONNX导出支持32DOF)
+  humanoidverse/tracking_inference.py              (自动检测DOF/robot_type)
+  humanoidverse/goal_inference.py                  (自动检测DOF/robot_type)
+  humanoidverse/reward_inference.py                (自动检测DOF/robot_type)
+  humanoidverse/train.py                           (添加train_bfm_zero_taks_t1)
 
 【6. Taks_T1 关节顺序 (32DOF)】
 左腿(6): hip_pitch, hip_roll, hip_yaw, knee, ankle_pitch, ankle_roll

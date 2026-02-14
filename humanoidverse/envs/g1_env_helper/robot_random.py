@@ -24,9 +24,9 @@ class G1EnvRand(G1Env):
             if self._xml_task != new_xml_task:
                 # Load the xml associated to the new terrain
                 self._xml_task = new_xml_task
-                self._xml_path = (task_to_xml(new_xml_task).as_posix(),)
+                self._xml_path = (task_to_xml(new_xml_task, config=self._config).as_posix(),)
 
-                self._mj_model = mujoco.MjModel.from_xml_path(task_to_xml(new_xml_task).as_posix())
+                self._mj_model = mujoco.MjModel.from_xml_path(task_to_xml(new_xml_task, config=self._config).as_posix())
                 self._mj_data = mujoco.MjData(self._mj_model)
 
         # randomize dynamics parameters

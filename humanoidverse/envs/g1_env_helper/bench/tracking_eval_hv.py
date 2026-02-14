@@ -23,6 +23,7 @@ from tqdm import tqdm
 
 from humanoidverse.utils.g1_env_config import G1EnvConfigsType
 os.environ["ISAAC_USE_GPU_PIPELINE"] = "0"
+# G1默认23DOF，Taks_T1为32DOF，实际使用时动态推断
 QVEL_IDX: int = 23
 
 if Version("0.26") <= Version(gymnasium.__version__) < Version("1.0"):
@@ -251,6 +252,9 @@ def _async_tracking_worker(inputs, env, disable_tqdm: bool = False):
 
     return metrics
 
+# G1默认: QPOS_START=26, QPOS_END=49 (dof_pos在state中的起止位置)
+# Taks_T1: QPOS_START=32+3=35? 实际取决于obs排列
+# 这里根据obs实际维度动态推断
 QPOS_START = 23+3
 QPOS_END = 23+3+23
 
@@ -287,8 +291,16 @@ def distance_proximity(next_obs: torch.Tensor, tracking_target: torch.Tensor, bo
 def _calc_metrics(ep):
     metr = {}
     # keep only qpos states
-    next_obs = torch.tensor(ep["observation"][1:, QPOS_START:QPOS_END], dtype=torch.float32)
-    tracking_target = torch.tensor(ep["tracking_target"][:, QPOS_START:QPOS_END], dtype=torch.float32)
+    # 动态推断qpos起止位置: 如果obs维度>=100则可能是Taks_T1 (32DOF)
+    obs_dim = ep["observation"].shape[-1] if hasattr(ep["observation"], 'shape') else 0
+    if obs_dim >= 70:  # Taks_T1: 32*2+6=70 state维度
+        _qs = 32 + 3  # dof_vel之后是gravity(3)
+        _qe = _qs + 32
+    else:
+        _qs = QPOS_START
+        _qe = QPOS_END
+    next_obs = torch.tensor(ep["observation"][1:, _qs:_qe], dtype=torch.float32)
+    tracking_target = torch.tensor(ep["tracking_target"][:, _qs:_qe], dtype=torch.float32)
     dist_prox_res = distance_proximity(next_obs=next_obs, tracking_target=tracking_target)
     metr.update(dist_prox_res)
     emd_res = emd_numpy(next_obs=next_obs, tracking_target=tracking_target)

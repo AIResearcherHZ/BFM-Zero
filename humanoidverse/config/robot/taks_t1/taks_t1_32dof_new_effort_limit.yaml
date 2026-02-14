@@ -308,7 +308,7 @@ robot:
     fix_base_link: False
 
   motion:
-    motion_file : 'data/lafan_29dof.pkl'
+    motion_file : 'data/lafan_32dof.pkl'
     asset:
       assetRoot: "humanoidverse/data/robots/Taks_T1/"
       assetFileName: "Taks_T1.xml"
