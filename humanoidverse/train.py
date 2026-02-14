@@ -721,6 +721,163 @@ def train_bfm_zero():
     workspace.train()
 
 
+def train_bfm_zero_taks_t1():
+    """Taks_T1 32DOF 训练入口，与 train_bfm_zero 对应"""
+    cfg = WorkspaceConfig(
+        agent=FBcprAuxAgentConfig(
+            name='FBcprAuxAgentConfig',
+            archi=FBcprArchitectureConfig(
+                name='FBcprArchitectureConfig',
+                z_dim=100,
+                actor=ActorConfig(
+                    name='ActorConfig',
+                    input_filter=InputFilterConfig(
+                        name='InputFilterConfig',
+                        key=['actor_obs'],
+                        normalize_keys=['actor_obs']
+                    ),
+                    hidden_dim=1024,
+                    num_hidden_layers=3,
+                    output_dim=32,  # 32 DOF
+                ),
+                backward=BackwardConfig(
+                    name='BackwardConfig',
+                    input_filter=InputFilterConfig(
+                        name='InputFilterConfig',
+                        key=['actor_obs'],
+                        normalize_keys=['actor_obs']
+                    ),
+                    hidden_dim=1024,
+                    num_hidden_layers=3,
+                ),
+                forward=ForwardConfig(
+                    name='ForwardConfig',
+                    input_filter=InputFilterConfig(
+                        name='InputFilterConfig',
+                        key=['critic_obs'],
+                        normalize_keys=['critic_obs']
+                    ),
+                    hidden_dim=1024,
+                    num_hidden_layers=3,
+                ),
+                critic=CriticConfig(
+                    name='CriticConfig',
+                    input_filter=InputFilterConfig(
+                        name='InputFilterConfig',
+                        key=['critic_obs'],
+                        normalize_keys=['critic_obs']
+                    ),
+                    hidden_dim=1024,
+                    num_hidden_layers=3,
+                ),
+                aux_critic=AuxCriticConfig(
+                    name='AuxCriticConfig',
+                    input_filter=InputFilterConfig(
+                        name='InputFilterConfig',
+                        key=['critic_obs'],
+                        normalize_keys=['critic_obs']
+                    ),
+                    hidden_dim=1024,
+                    num_hidden_layers=3,
+                ),
+                pretrained_encoder=PretrainedEncoderConfig(
+                    name='PretrainedEncoderConfig',
+                    enable=True,
+                    repo_id='LeCAR-Lab/BFM-Zero',
+                    filename='encoder.safetensors',
+                    allow_mismatching_keys=True
+                ),
+                inference_batch_size=500000,
+                seq_length=8,
+                actor_std=0.05,
+                amp=False,
+                norm_aux_reward=RewardNormalizerConfig(name='RewardNormalizer', translate=False, scale=True)
+            ),
+            train=FBcprAuxAgentTrainConfig(
+                name='FBcprAuxAgentTrainConfig',
+                lr_f=0.0003,
+                lr_b=1e-05,
+                lr_actor=0.0003,
+                weight_decay=0.0,
+                clip_grad_norm=0.0,
+                fb_target_tau=0.01,
+                ortho_coef=100.0,
+                train_goal_ratio=0.2,
+                fb_pessimism_penalty=0.0,
+                actor_pessimism_penalty=0.5,
+                stddev_clip=0.3,
+                q_loss_coef=0.0,
+                batch_size=1024,
+                discount=0.98,
+                use_mix_rollout=True,
+                update_z_every_step=100,
+                z_buffer_size=8192,
+                rollout_expert_trajectories=True,
+                rollout_expert_trajectories_length=250,
+                rollout_expert_trajectories_percentage=0.5,
+                lr_aux_critic=0.0003,
+                reg_coeff_aux=0.02,
+                aux_critic_pessimism_penalty=0.5
+            ),
+            aux_rewards=['penalty_torques', 'penalty_action_rate', 'limits_dof_pos', 'limits_torque', 'penalty_undesired_contact', 'penalty_feet_ori', 'penalty_ankle_roll', 'penalty_slippage'],
+            aux_rewards_scaling={'penalty_action_rate': -0.1, 'penalty_feet_ori': -0.4, 'penalty_ankle_roll': -4.0, 'limits_dof_pos': -10.0, 'penalty_slippage': -2.0, 'penalty_undesired_contact': -1.0, 'penalty_torques': 0.0, 'limits_torque': 0.0},
+            cudagraphs=False,
+            compile=True
+        ),
+        motions='',
+        motions_root='',
+        env=HumanoidVerseIsaacConfig(
+            name='humanoidverse_isaac',
+            device='cuda:0',
+            lafan_tail_path='humanoidverse/data/lafan_29dof_10s-clipped.pkl',
+            enable_cameras=False,
+            camera_render_save_dir='isaac_videos',
+            max_episode_length_s=None,
+            disable_obs_noise=False,
+            disable_domain_randomization=False,
+            relative_config_path='exp/bfm_zero/bfm_zero_taks_t1',
+            include_last_action=True,
+            hydra_overrides=['robot=taks_t1/taks_t1_32dof', 'robot.control.action_scale=0.25', 'robot.control.action_clip_value=5.0', 'robot.control.normalize_action_to=5.0', 'env.config.lie_down_init=True', 'env.config.lie_down_init_prob=0.3'],
+            context_length=None,
+            include_dr_info=False,
+            included_dr_obs_names=None,
+            include_history_actor=True,
+            include_history_noaction=False,
+            make_config_g1env_compatible=False,
+            root_height_obs=True
+        ),
+        work_dir='results/bfmzero-taks-t1',
+        seed=4728,
+        online_parallel_envs=1024,
+        log_every_updates=384000,
+        num_env_steps=384000000,
+        update_agent_every=1024,
+        num_seed_steps=10240,
+        num_agent_updates=16,
+        checkpoint_every_steps=9600000,
+        checkpoint_buffer=True,
+        prioritization=True,
+        prioritization_min_val=0.5,
+        prioritization_max_val=2.0,
+        prioritization_scale=2.0,
+        prioritization_mode='exp',
+        use_trajectory_buffer=True,
+        buffer_size=5120000,
+        use_wandb=False,
+        wandb_ename='yitangl',
+        wandb_gname='bfmzero-taks-t1',
+        wandb_pname='bfmzero-taks-t1',
+        load_isaac_expert_data=True,
+        buffer_device='cuda',
+        disable_tqdm=True,
+        evaluations=[HumanoidVerseIsaacTrackingEvaluationConfig(name='HumanoidVerseIsaacTrackingEvaluationConfig', generate_videos=False, videos_dir='videos', video_name_prefix='unknown_agent', name_in_logs='humanoidverse_tracking_eval', env=None, num_envs=1024, n_episodes_per_motion=1)],
+        eval_every_steps=9600000,
+        tags={},
+    )
+    workspace = cfg.build()
+    workspace.train()
+
+
 if __name__ == "__main__":
     # This is the bare minimum CLI interface to launch experiments, but ideally you should
     # launch your experiments from Python code (e.g., see under "scripts")

@@ -27,12 +27,18 @@ class MuJoCo(BaseSimulator):
     
     def setup(self):
         # Build the path to the MuJoCo model (MJCF/XML file)
-        self.model_path = os.path.join(
-            self.robot_cfg.asset.asset_root, 
-            self.robot_cfg.asset.xml_file
-        )
+        # 根据config构建scene XML路径，支持不同机器人
         hv_root = Path(__file__).parents[2]
-        self.model_path = str(hv_root / "data/robots/g1/scene_29dof_freebase_mujoco.xml")
+        robot_type = self.robot_cfg.asset.robot_type
+        if "g1" in robot_type.lower():
+            self.model_path = str(hv_root / "data/robots/g1/scene_29dof_freebase_mujoco.xml")
+        elif "taks" in robot_type.lower():
+            self.model_path = str(hv_root / "data/robots/Taks_T1/scene_Taks_T1.xml")
+        else:
+            self.model_path = os.path.join(
+                self.robot_cfg.asset.asset_root,
+                self.robot_cfg.asset.xml_file
+            )
         self.freebase = True
 
         self.model = mujoco.MjModel.from_xml_path(self.model_path)
@@ -177,19 +183,16 @@ class MuJoCo(BaseSimulator):
 
         self.body_id = np.arange(self.num_bodies, dtype=np.int32) + 1
 
-        if "23" in self.model_path:
-            for b in range(self.model.nbody):
-                if "wrist" in mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b) or "hand" in mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b):
-                    self.body_names.remove(mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b))
-                    self.num_bodies -= 1
-                    self.body_id = np.delete(self.body_id, np.where(self.body_id == b))
-
-        if "29" in self.model_path:
-            for b in range(self.model.nbody):
-                if "hand" in mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b):
-                    self.body_names.remove(mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b))
-                    self.num_bodies -= 1
-                    self.body_id = np.delete(self.body_id, np.where(self.body_id == b))
+        # 过滤掉不在config body_names中的body（兼容g1的hand过滤和其他机器人）
+        config_body_names = set(self.robot_cfg.body_names)
+        bodies_to_remove = [b for b in range(self.model.nbody)
+                           if mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b) in self.body_names
+                           and mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b) not in config_body_names]
+        for b in bodies_to_remove:
+            bname = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, b)
+            self.body_names.remove(bname)
+            self.num_bodies -= 1
+            self.body_id = np.delete(self.body_id, np.where(self.body_id == b))
         
         # Validate configuration consistency.
         assert self.num_dof == len(self.robot_cfg.dof_names), "Number of DOFs must match the config."

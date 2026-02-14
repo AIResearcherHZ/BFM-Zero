@@ -1,0 +1,167 @@
+================================================================================
+                              仓库与环境准备
+================================================================================
+【Git 仓库克隆】
+git clone https://github.com/AIResearcherHZ/isaaclab.git
+git clone https://github.com/AIResearcherHZ/S2S2R.git
+git clone https://github.com/AIResearcherHZ/whole_body_tracking.git
+git clone https://github.com/AIResearcherHZ/GMR.git
+git clone --recurse-submodules https://github.com/AIResearcherHZ/TWIST2.git
+git clone --recurse-submodules https://github.com/AIResearcherHZ/HOVER
+git clone https://gitee.com/xie-haozheng/atom01_train.git
+git clone --recurse-submodules https://github.com/Roboparty/atom01_deploy.git
+git clone --recurse-submodules https://github.com/eclipse-zenoh/zenoh-cpp.git
+
+sudo /usr/bin/clash-verge-service-install
+
+【服务器 VNC】
+/opt/TurboVNC/bin/vncserver \
+  -wm xfce \
+  -securitytypes none
+
+
+【软链接】
+ln -s /home/xhz/isaacsim _isaac_sim
+
+
+sudo rm -rf /home/xhz/anaconda3/envs/isaaclab/lib/python3.11/site-packages/neural_wbc_student_policy-0.0.0-nspkg.pth
+
+
+================================================================================
+                          BFM-Zero 安装 (conda + pip 阿里源)
+================================================================================
+
+【1. 克隆仓库并拉取大文件 (Git LFS)】
+git clone https://github.com/LeCAR-Lab/BFM-Zero.git
+cd BFM-Zero
+git lfs install
+git lfs pull
+
+【2. 创建 conda 环境】
+conda create -n bfmzero python=3.10 -y
+conda activate bfmzero
+
+【3. 安装 PyTorch (CUDA 12.4，根据你的 CUDA 版本选择)】
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+【4. 安装 Isaac Sim 和 Isaac Lab (仅 Linux，需要 NVIDIA PyPI)】
+pip install isaacsim[all,extscache]==4.5.0 --extra-index-url https://pypi.nvidia.com
+pip install isaaclab[all,isaacsim]==2.0.2 --extra-index-url https://pypi.nvidia.com
+
+【5. 安装 humenv (从 GitHub 源码)】
+pip install git+https://github.com/facebookresearch/humenv.git -i https://mirrors.aliyun.com/pypi/simple/
+
+【6. pip 安装其余依赖 (阿里源)】
+pip install -i https://mirrors.aliyun.com/pypi/simple/ \
+    easydict>=1.13 \
+    exca>=0.2.5 \
+    hf-xet>=1.1.2 \
+    huggingface-hub>=0.30.2 \
+    hydra-core>=1.2.0 \
+    joblib>=1.4.2 \
+    loguru>=0.7.3 \
+    lxml>=5.3.2 \
+    mediapy>=1.2.3 \
+    ml-collections>=1.1.0 \
+    mujoco>=3.3.1 \
+    notebook>=7.4.2 \
+    numpy-stl>=3.2.0 \
+    onnx>=1.16.1 \
+    onnxruntime>=1.22.0 \
+    open3d>=0.19.0 \
+    pot>=0.9.5 \
+    pydantic>=2.11.3 \
+    rich>=14.0.0 \
+    safetensors>=0.5.3 \
+    tensordict>=0.8.3 \
+    termcolor>=3.0.1 \
+    tyro>=0.9.18 \
+    xxhash>=3.5.0
+
+【7. 以开发模式安装本项目】
+pip install -e . -i https://mirrors.aliyun.com/pypi/simple/
+
+【8. 训练 (用 python 替代 uv run python)】
+python -m humanoidverse.train
+
+【9. 推理】
+python -m humanoidverse.tracking_inference --model_folder /path/to/model --no-headless --save_mp4
+python -m humanoidverse.goal_inference --model_folder /path/to/model --save_mp4
+python -m humanoidverse.reward_inference --model_folder /path/to/model --save_mp4
+
+【注意事项】
+- Isaac Sim / Isaac Lab 只支持 Linux
+- 需要 CUDA GPU
+- isaacsim 和 isaaclab 包必须从 https://pypi.nvidia.com 安装，不能用阿里源
+- 训练建议：50-100M steps 后 eval/emd 应低于 0.75
+
+
+================================================================================
+                       Taks_T1 机器人 (32DOF) 使用说明
+================================================================================
+
+【1. 训练 Taks_T1】
+# 方式一：使用预置的训练入口函数（推荐）
+python -c "from humanoidverse.train import train_bfm_zero_taks_t1; train_bfm_zero_taks_t1()"
+
+# 方式二：通过hydra override指定机器人
+python -m humanoidverse.train \
+    robot=taks_t1/taks_t1_32dof \
+    robot.control.action_scale=0.25 \
+    robot.control.action_clip_value=5.0 \
+    robot.control.normalize_action_to=5.0
+
+# 使用hard_waist变体（腰部刚度更高）
+python -m humanoidverse.train robot=taks_t1/taks_t1_32dof_hard_waist
+
+【2. 推理/评估 Taks_T1 模型】
+# tracking inference（动作追踪）
+python -m humanoidverse.tracking_inference --model_folder /path/to/taks_t1_model --save_mp4
+
+# goal inference（目标推理）
+python -m humanoidverse.goal_inference --model_folder /path/to/taks_t1_model --save_mp4
+
+# reward inference（奖励推理）
+python -m humanoidverse.reward_inference --model_folder /path/to/taks_t1_model --save_mp4
+
+【3. Sim2Sim (Isaac Sim → MuJoCo)】
+- 训练时使用 IsaacSim (simulator=isaacsim)，推理时自动切换到 MuJoCo
+- MuJoCo scene 文件: humanoidverse/data/robots/Taks_T1/scene_Taks_T1.xml
+- 推理脚本会自动检测robot类型并选择对应的MuJoCo scene
+- ONNX导出已支持32DOF，state维度=70 (32*2+6)
+
+【4. Sim2Real / 部署】
+- ONNX模型导出在 model_folder/exported/ 目录下
+- 导出的ONNX模型输入: actor_obs (state + last_action + [history] + z)
+  - state: 70维 = 32(dof_pos) + 32(dof_vel) + 3(gravity) + 3(ang_vel)
+  - last_action: 32维
+  - z: 100维 (latent context)
+- 部署到实物需要：
+  1. 读取关节编码器获取 dof_pos (32维)
+  2. 计算 dof_vel (差分或编码器速度)
+  3. 从IMU获取 projected_gravity 和 angular_velocity
+  4. 将观测拼接后输入ONNX模型
+  5. 输出32维action → 通过PD控制转为关节扭矩
+
+【5. Taks_T1 配置文件清单】
+- 机器人YAML配置:
+  humanoidverse/config/robot/taks_t1/taks_t1_32dof.yaml           (基础)
+  humanoidverse/config/robot/taks_t1/taks_t1_32dof_hard_waist.yaml (硬腰)
+  humanoidverse/config/robot/taks_t1/taks_t1_32dof_new_effort_limit.yaml (高力矩)
+- 实验配置:
+  humanoidverse/config/exp/bfm_zero/bfm_zero_taks_t1.yaml
+- 机器人资产:
+  humanoidverse/data/robots/Taks_T1/Taks_T1.urdf
+  humanoidverse/data/robots/Taks_T1/Taks_T1.xml
+  humanoidverse/data/robots/Taks_T1/scene_Taks_T1.xml
+- Python配置:
+  humanoidverse/utils/taks_t1_env_config.py (MuJoCo评估环境)
+  humanoidverse/agents/evaluations/taks_t1env.py (评估配置)
+
+【6. Taks_T1 关节顺序 (32DOF)】
+左腿(6): hip_pitch, hip_roll, hip_yaw, knee, ankle_pitch, ankle_roll
+右腿(6): 同上
+腰部(3): waist_yaw, waist_roll, waist_pitch
+左臂(7): shoulder_pitch, shoulder_roll, shoulder_yaw, elbow, wrist_roll, wrist_yaw, wrist_pitch
+右臂(7): 同上
+脖子(3): neck_yaw, neck_roll, neck_pitch

@@ -62,6 +62,13 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
 
     output_dir = model_folder / "exported"
     output_dir.mkdir(parents=True, exist_ok=True)
+    # 从config检测DOF数量，支持Taks_T1(32DOF)等不同机器人
+    _hydra_overrides = config["env"].get("hydra_overrides", [])
+    _num_dof = None
+    for _o in _hydra_overrides:
+        if _o.startswith("robot=") and "taks" in _o.lower():
+            _num_dof = 32
+            break
     export_meta_policy_as_onnx(
         model,
         output_dir,
@@ -69,7 +76,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
         {"actor_obs": torch.randn(1, model._actor.input_filter.output_space.shape[0] + model.cfg.archi.z_dim)},
         z_dim=model.cfg.archi.z_dim,
         history=('history_actor' in model.cfg.archi.actor.input_filter.key),
-        use_29dof=True,
+        use_29dof=(_num_dof is None),
+        num_dof=_num_dof,
     )
     print(f"Exported model to {output_dir}/{model_name}.onnx")
     tasks = [
@@ -157,6 +165,12 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     # dataset = fast_load_buffer(model_folder / "checkpoint/buffers/train", device="cpu")
     print(f"done in {time.time()-start_t}s")
     inference_function = "reward_wr_inference"
+    # 根据config中的robot类型选择对应的scene XML
+    robot_overrides = [o for o in config["env"].get("hydra_overrides", []) if o.startswith("robot=")]
+    if any("taks" in o.lower() for o in robot_overrides):
+        _env_model_path = str(HUMANOIDVERSE_DIR / "data" / "robots" / "Taks_T1" / "scene_Taks_T1.xml")
+    else:
+        _env_model_path = str(HUMANOIDVERSE_DIR / "data" / "robots" / "g1" / "scene_29dof_freebase_noadditional_actuators.xml")
     reward_eval_agent = RewardWrapperHV(
         model=model,
         inference_dataset=dataset,
@@ -164,7 +178,7 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
         inference_function=inference_function,
         max_workers=24,
         process_executor=True,
-        env_model=str(HUMANOIDVERSE_DIR / "data" / "robots" / "g1" / "scene_29dof_freebase_noadditional_actuators.xml"),
+        env_model=_env_model_path,
     )
     z_dict = {}
     for r in range(n_inferences):
@@ -186,7 +200,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     if not skip_rollouts:
         print("Generating videos...")
         if save_mp4:
-            rgb_renderer = IsaacRendererWithMuJoco(render_size=256)
+            _robot_type = "taks_t1" if _num_dof == 32 else "g1"
+            rgb_renderer = IsaacRendererWithMuJoco(render_size=256, robot_type=_robot_type)
         for task in tasks:
             frames = []
             for z in z_dict[task]:

@@ -55,6 +55,13 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     # Outputs under model_folder/tracking_inference (sibling of exported/)
     output_dir = model_folder / "exported"
     output_dir.mkdir(parents=True, exist_ok=True)
+    # 从config检测DOF数量，支持Taks_T1(32DOF)等不同机器人
+    _hydra_overrides = config["env"].get("hydra_overrides", [])
+    _num_dof = None
+    for _o in _hydra_overrides:
+        if _o.startswith("robot=") and "taks" in _o.lower():
+            _num_dof = 32
+            break
     export_meta_policy_as_onnx(
         model,
         output_dir,
@@ -62,7 +69,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
         {"actor_obs": torch.randn(1, model._actor.input_filter.output_space.shape[0] + model.cfg.archi.z_dim)},
         z_dim=model.cfg.archi.z_dim,
         history=('history_actor' in model.cfg.archi.actor.input_filter.key),
-        use_29dof=True,
+        use_29dof=(_num_dof is None),
+        num_dof=_num_dof,
     )
     print(f"Exported model to {output_dir}/{model_name}.onnx")
 
@@ -139,7 +147,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     episode_len = 100
     print(f"Saving video for tracking ({episode_len} steps)")
     if save_mp4:
-        rgb_renderer = IsaacRendererWithMuJoco(render_size=256)
+        _robot_type = "taks_t1" if _num_dof == 32 else "g1"
+        rgb_renderer = IsaacRendererWithMuJoco(render_size=256, robot_type=_robot_type)
         # Only render 1 + episode_len frames (same as frames list), not the full motion
         expert_video = rgb_renderer.from_qpos(expert_qpos[: 1 + episode_len])
         frames = [rgb_renderer.render(wrapped_env._env, 0)[0]]

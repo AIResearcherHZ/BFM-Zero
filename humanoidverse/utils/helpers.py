@@ -237,11 +237,23 @@ def get_backward_observation(env, motion_id, use_root_height_obs: bool = False, 
         return max_local_self_obs, ref_dict
 
 
-def export_meta_policy_as_onnx(inference_model, path, exported_policy_name, example_obs_dict, z_dim, history: bool = False, use_29dof: bool = True):
+def export_meta_policy_as_onnx(inference_model, path, exported_policy_name, example_obs_dict, z_dim, history: bool = False, use_29dof: bool = True, num_dof: int = None):
     os.makedirs(path, exist_ok=True)
     path = os.path.join(path, exported_policy_name)
     inference_model = inference_model.eval()
     actor = copy.deepcopy(inference_model).to("cpu")
+
+    # 根据num_dof自动推断state_end和action_end，兼容29/23/32等不同DOF
+    if num_dof is not None:
+        _num_dof = num_dof
+        _state_end = num_dof * 2 + 6  # dof_pos + dof_vel + gravity(3) + ang_vel(3)
+    elif use_29dof:
+        _num_dof = 29
+        _state_end = 64
+    else:
+        _num_dof = 23
+        _state_end = 52
+    _action_end = _state_end + _num_dof
 
     class PPOWrapper(nn.Module):
         def __init__(self, actor, history):
@@ -258,20 +270,14 @@ def export_meta_policy_as_onnx(inference_model, path, exported_policy_name, exam
             Dynamically creates a dictionary from the input keys and args.
             """
             actor_obs, ctx = actor_obs[:, :-z_dim], actor_obs[:, -z_dim:]
-            if use_29dof:
-                state_end = 64
-                action_end = state_end+29
-            else:
-                state_end = 52
-                action_end = state_end+23
-            state = actor_obs[:, :state_end]
-            last_action = actor_obs[:, state_end:(action_end)]
+            state = actor_obs[:, :_state_end]
+            last_action = actor_obs[:, _state_end:(_action_end)]
             actor_dict = {
                 "state": state,
                 "last_action": last_action
             }
             if self.history:
-                actor_dict["history_actor"] = actor_obs[:, (action_end):]
+                actor_dict["history_actor"] = actor_obs[:, (_action_end):]
 
             return self.actor.act(actor_dict, ctx)
 

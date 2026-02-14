@@ -36,12 +36,16 @@ class StateInit(Enum):
     MoCapAndFall = 4
 
 
-# Single scene for all tasks (no separate terrain XMLs).
+# 默认scene XML（G1）
 _SCENE_XML = "scene_29dof_freebase_mujoco.xml"
+_TAKS_T1_SCENE_XML = "scene_Taks_T1.xml"
 
 
-def task_to_xml(task_name: str) -> Path:
-    """Resolve task name to the single G1 scene XML path (package data dir)."""
+def task_to_xml(task_name: str, config: G1EnvConfig = None) -> Path:
+    """根据config类型选择对应的scene XML路径"""
+    if config is not None and hasattr(config, 'name') and 'taks' in config.name.lower():
+        from humanoidverse.utils.taks_t1_env_config import get_taks_t1_robot_xml_root
+        return get_taks_t1_robot_xml_root() / _TAKS_T1_SCENE_XML
     root = get_g1_robot_xml_root()
     return root / _SCENE_XML
 
@@ -56,7 +60,7 @@ class G1Env(G1Base):
         if "<mujoco" in xml_task:
             xml = xml_task
         else:
-            xml = task_to_xml(xml_task).as_posix()
+            xml = task_to_xml(xml_task, config=config).as_posix()
         super().__init__(
             xml_path=xml,
             config=config,

@@ -595,4 +595,9 @@
     <framelinvel name="frame_vel" objtype="site" objname="imu" />
   </sensor>
 
+  <keyframe>
+    <key name="stand"
+      qpos="0.0 0.0 0.75 0.0 0.0 0.0 1.0 -0.14 0.0 0.0 0.36 -0.2 0.0 -0.14 0.0 0.0 0.36 -0.2 0.0 0.0 0.0 0.0 0.16 0.16 0.0 1.10 0.0 0.0 0.0 0.16 -0.16 0.0 1.10 0.0 0.0 0.0 0.0 0.0 0.0"/>
+  </keyframe>
+
 </mujoco>

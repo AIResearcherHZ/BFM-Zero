@@ -57,6 +57,13 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
 
     output_dir = model_folder / "exported"
     output_dir.mkdir(parents=True, exist_ok=True)
+    # 从config检测DOF数量，支持Taks_T1(32DOF)等不同机器人
+    _hydra_overrides = config["env"].get("hydra_overrides", [])
+    _num_dof = None
+    for _o in _hydra_overrides:
+        if _o.startswith("robot=") and "taks" in _o.lower():
+            _num_dof = 32
+            break
     export_meta_policy_as_onnx(
         model,
         output_dir,
@@ -64,7 +71,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
         {"actor_obs": torch.randn(1, model._actor.input_filter.output_space.shape[0] + model.cfg.archi.z_dim)},
         z_dim=model.cfg.archi.z_dim,
         history=('history_actor' in model.cfg.archi.actor.input_filter.key),
-        use_29dof=True,
+        use_29dof=(_num_dof is None),
+        num_dof=_num_dof,
     )
     print(f"Exported model to {output_dir}/{model_name}.onnx")
     env_cfg = HumanoidVerseIsaacConfig(**config["env"])
@@ -78,6 +86,7 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     # Try to find goal_frames JSON file
     goal_json_paths = [
         HUMANOIDVERSE_DIR / "data" / "robots" / "g1" / "goal_frames_lafan29dof.json",
+        HUMANOIDVERSE_DIR / "data" / "robots" / "Taks_T1" / "goal_frames_lafan29dof.json",
         HUMANOIDVERSE_DIR / "data" / "goal_frames_lafan29dof.json",
     ]
     goal_json = None
@@ -117,7 +126,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
         joblib.dump(z_dict, f)
 
     if save_mp4:
-        rgb_renderer = IsaacRendererWithMuJoco(render_size=256)
+        _robot_type = "taks_t1" if _num_dof == 32 else "g1"
+        rgb_renderer = IsaacRendererWithMuJoco(render_size=256, robot_type=_robot_type)
 
     observation, info = wrapped_env.reset(to_numpy=False)
     observation, info = wrapped_env.reset(to_numpy=False)
