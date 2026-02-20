@@ -52,34 +52,41 @@ pip install isaaclab[all,isaacsim]==2.0.2 --extra-index-url https://pypi.nvidia.
 pip install git+https://github.com/facebookresearch/humenv.git -i https://mirrors.aliyun.com/pypi/simple/
 
 【6. pip 安装其余依赖 (阿里源)】
+# 注意：isaaclab 环境是 Python 3.11，以下版本约束经过冲突验证
 pip install -i https://mirrors.aliyun.com/pypi/simple/ \
-    easydict>=1.13 \
-    exca>=0.2.5 \
-    hf-xet>=1.1.2 \
-    huggingface-hub>=0.30.2 \
-    hydra-core>=1.2.0 \
-    joblib>=1.4.2 \
-    loguru>=0.7.3 \
-    lxml>=5.3.2 \
-    mediapy>=1.2.3 \
-    ml-collections>=1.1.0 \
-    mujoco>=3.3.1 \
-    notebook>=7.4.2 \
-    numpy-stl>=3.2.0 \
-    onnx>=1.16.1 \
-    onnxruntime>=1.22.0 \
-    open3d>=0.19.0 \
-    pot>=0.9.5 \
-    pydantic>=2.11.3 \
-    rich>=14.0.0 \
-    safetensors>=0.5.3 \
-    tensordict>=0.8.3 \
-    termcolor>=3.0.1 \
-    tyro>=0.9.18 \
-    xxhash>=3.5.0
+  "easydict>=1.13" \
+  "exca==0.4.8" \
+  "hf-xet>=1.1.2" \
+  "huggingface-hub>=0.30.2" \
+  "hydra-core>=1.2.0" \
+  "joblib>=1.4.2" \
+  "loguru>=0.7.3" \
+  "lxml>=5.3.2" \
+  "mediapy>=1.2.3" \
+  "ml-collections>=1.1.0" \
+  "mujoco==3.3.3" \
+  "notebook>=7.4.2" \
+  "numpy-stl>=3.2.0" \
+  "onnx>=1.16.1" \
+  "onnxruntime>=1.22.0" \
+  "open3d>=0.19.0" \
+  "pot>=0.9.5" \
+  "pydantic>=2.11.3" \
+  "rich<14.0.0" \
+  "wrapt==1.16.0" \
+  "safetensors>=0.5.3" \
+  "tensordict>=0.8.3" \
+  "termcolor>=3.0.1" \
+  "tyro>=0.9.18" \
+  "xxhash>=3.5.0" \
+  "typing_extensions==4.12.2"
+
+# 降级 dm-control 以兼容 mujoco==3.3.3 (robolab 约束)
+pip install -i https://mirrors.aliyun.com/pypi/simple/ "dm-control==1.0.31"
 
 【7. 以开发模式安装本项目】
-pip install -e . -i https://mirrors.aliyun.com/pypi/simple/
+# 用 --no-deps 跳过 pyproject.toml 中 isaacsim/isaaclab 版本约束冲突（已手动装好）
+pip install -e . --no-deps -i https://mirrors.aliyun.com/pypi/simple/
 
 【8. 训练 (用 python 替代 uv run python)】
 python -m humanoidverse.train

@@ -1,0 +1,6 @@
+*.egg-info
+*.pyc
+.vscode
+outputs
+wandb
+*.mp4
