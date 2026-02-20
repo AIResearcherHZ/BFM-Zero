@@ -299,7 +299,7 @@ robot:
     linear_damping: 0.
 
     urdf_file: "Taks_T1/Taks_T1.urdf"
-    usd_file: null
+    usd_file: "Taks_T1/Taks_T1.usd"
     xml_file: "Taks_T1/Taks_T1.xml"
     robot_type: Taks_T1
     self_collisions: 0

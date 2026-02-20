@@ -721,70 +721,74 @@ def train_bfm_zero():
     workspace.train()
 
 
-def train_bfm_zero_taks_t1():
-    """Taks_T1 32DOF 训练入口，与 train_bfm_zero 对应"""
-    cfg = WorkspaceConfig(
+def _build_bfm_zero_config(
+    task: str = "g1",
+    seed: int = 4728,
+    headless: bool = True,
+    num_envs: int = 1024,
+    work_dir: str | None = None,
+    extra_hydra_overrides: list[str] | None = None,
+) -> TrainConfig:
+    """根据task类型构建TrainConfig，支持g1和taks_t1"""
+    from humanoidverse.agents.fb_cpr_aux.model import FBcprAuxModelArchiConfig, FBcprAuxModelConfig
+    from humanoidverse.agents.fb_cpr_aux.agent import FBcprAuxAgentTrainConfig
+    from humanoidverse.agents.nn_models import ForwardArchiConfig, BackwardArchiConfig, ActorArchiConfig, DiscriminatorArchiConfig, RewardNormalizerConfig
+    from humanoidverse.agents.normalizers import ObsNormalizerConfig, BatchNormNormalizerConfig
+    from humanoidverse.agents.nn_filters import DictInputFilterConfig
+
+    is_taks = "taks" in task.lower()
+    if is_taks:
+        lafan_tail_path = 'humanoidverse/data/lafan_32dof_10s-clipped.pkl'
+        relative_config_path = 'exp/bfm_zero/bfm_zero_taks_t1'
+        robot_override = 'robot=taks_t1/taks_t1_32dof'
+        _work_dir = work_dir or 'results/bfmzero-taks-t1'
+        wandb_gname, wandb_pname = 'bfmzero-taks-t1', 'bfmzero-taks-t1'
+    else:
+        lafan_tail_path = 'humanoidverse/data/lafan_29dof_10s-clipped.pkl'
+        relative_config_path = 'exp/bfm_zero/bfm_zero'
+        robot_override = 'robot=g1/g1_29dof_hard_waist'
+        _work_dir = work_dir or 'results/bfmzero-isaac'
+        wandb_gname, wandb_pname = 'bfmzero-isaac', 'bfmzero-isaac'
+
+    hydra_overrides = [
+        robot_override,
+        'robot.control.action_scale=0.25',
+        'robot.control.action_clip_value=5.0',
+        'robot.control.normalize_action_to=5.0',
+        'env.config.lie_down_init=True',
+        'env.config.lie_down_init_prob=0.3',
+    ]
+    if not headless:
+        hydra_overrides.append('env.config.headless=False')
+    if extra_hydra_overrides:
+        hydra_overrides.extend(extra_hydra_overrides)
+
+    cfg = TrainConfig(
+        name='TrainConfig',
         agent=FBcprAuxAgentConfig(
-            name='FBcprAuxAgentConfig',
-            archi=FBcprArchitectureConfig(
-                name='FBcprArchitectureConfig',
-                z_dim=100,
-                actor=ActorConfig(
-                    name='ActorConfig',
-                    input_filter=InputFilterConfig(
-                        name='InputFilterConfig',
-                        key=['actor_obs'],
-                        normalize_keys=['actor_obs']
-                    ),
-                    hidden_dim=1024,
-                    num_hidden_layers=3,
-                    output_dim=32,  # 32 DOF
+            name='FBcprAuxAgent',
+            model=FBcprAuxModelConfig(
+                name='FBcprAuxModel',
+                device='cuda',
+                archi=FBcprAuxModelArchiConfig(
+                    name='FBcprAuxModelArchiConfig',
+                    z_dim=256,
+                    norm_z=True,
+                    f=ForwardArchiConfig(name='ForwardArchi', hidden_dim=2048, model='residual', hidden_layers=6, embedding_layers=2, num_parallel=2, ensemble_mode='batch', input_filter=DictInputFilterConfig(name='DictInputFilterConfig', key=['state', 'privileged_state', 'last_action', 'history_actor'])),
+                    b=BackwardArchiConfig(name='BackwardArchi', hidden_dim=256, hidden_layers=1, norm=True, input_filter=DictInputFilterConfig(name='DictInputFilterConfig', key=['state', 'privileged_state'])),
+                    actor=ActorArchiConfig(name='actor', model='residual', hidden_dim=2048, hidden_layers=6, embedding_layers=2, input_filter=DictInputFilterConfig(name='DictInputFilterConfig', key=['state', 'last_action', 'history_actor'])),
+                    critic=ForwardArchiConfig(name='ForwardArchi', hidden_dim=2048, model='residual', hidden_layers=6, embedding_layers=2, num_parallel=2, ensemble_mode='batch', input_filter=DictInputFilterConfig(name='DictInputFilterConfig', key=['state', 'privileged_state', 'last_action', 'history_actor'])),
+                    discriminator=DiscriminatorArchiConfig(name='DiscriminatorArchi', hidden_dim=1024, hidden_layers=3, input_filter=DictInputFilterConfig(name='DictInputFilterConfig', key=['state', 'privileged_state'])),
+                    aux_critic=ForwardArchiConfig(name='ForwardArchi', hidden_dim=2048, model='residual', hidden_layers=6, embedding_layers=2, num_parallel=2, ensemble_mode='batch', input_filter=DictInputFilterConfig(name='DictInputFilterConfig', key=['state', 'privileged_state', 'last_action', 'history_actor']))
                 ),
-                backward=BackwardConfig(
-                    name='BackwardConfig',
-                    input_filter=InputFilterConfig(
-                        name='InputFilterConfig',
-                        key=['actor_obs'],
-                        normalize_keys=['actor_obs']
-                    ),
-                    hidden_dim=1024,
-                    num_hidden_layers=3,
-                ),
-                forward=ForwardConfig(
-                    name='ForwardConfig',
-                    input_filter=InputFilterConfig(
-                        name='InputFilterConfig',
-                        key=['critic_obs'],
-                        normalize_keys=['critic_obs']
-                    ),
-                    hidden_dim=1024,
-                    num_hidden_layers=3,
-                ),
-                critic=CriticConfig(
-                    name='CriticConfig',
-                    input_filter=InputFilterConfig(
-                        name='InputFilterConfig',
-                        key=['critic_obs'],
-                        normalize_keys=['critic_obs']
-                    ),
-                    hidden_dim=1024,
-                    num_hidden_layers=3,
-                ),
-                aux_critic=AuxCriticConfig(
-                    name='AuxCriticConfig',
-                    input_filter=InputFilterConfig(
-                        name='InputFilterConfig',
-                        key=['critic_obs'],
-                        normalize_keys=['critic_obs']
-                    ),
-                    hidden_dim=1024,
-                    num_hidden_layers=3,
-                ),
-                pretrained_encoder=PretrainedEncoderConfig(
-                    name='PretrainedEncoderConfig',
-                    enable=True,
-                    repo_id='LeCAR-Lab/BFM-Zero',
-                    filename='encoder.safetensors',
+                obs_normalizer=ObsNormalizerConfig(
+                    name='ObsNormalizerConfig',
+                    normalizers={
+                        'state': BatchNormNormalizerConfig(name='BatchNormNormalizerConfig', momentum=0.01),
+                        'privileged_state': BatchNormNormalizerConfig(name='BatchNormNormalizerConfig', momentum=0.01),
+                        'last_action': BatchNormNormalizerConfig(name='BatchNormNormalizerConfig', momentum=0.01),
+                        'history_actor': BatchNormNormalizerConfig(name='BatchNormNormalizerConfig', momentum=0.01)
+                    },
                     allow_mismatching_keys=True
                 ),
                 inference_batch_size=500000,
@@ -815,6 +819,16 @@ def train_bfm_zero_taks_t1():
                 rollout_expert_trajectories=True,
                 rollout_expert_trajectories_length=250,
                 rollout_expert_trajectories_percentage=0.5,
+                lr_discriminator=1e-05,
+                lr_critic=0.0003,
+                critic_target_tau=0.005,
+                critic_pessimism_penalty=0.5,
+                reg_coeff=0.05,
+                scale_reg=True,
+                expert_asm_ratio=0.6,
+                relabel_ratio=0.8,
+                grad_penalty_discriminator=10.0,
+                weight_decay_discriminator=0.0,
                 lr_aux_critic=0.0003,
                 reg_coeff_aux=0.02,
                 aux_critic_pessimism_penalty=0.5
@@ -829,16 +843,15 @@ def train_bfm_zero_taks_t1():
         env=HumanoidVerseIsaacConfig(
             name='humanoidverse_isaac',
             device='cuda:0',
-            # 需先运行 python -m humanoidverse.data.convert_lafan_29dof_to_32dof 生成32dof数据
-            lafan_tail_path='humanoidverse/data/lafan_32dof_10s-clipped.pkl',
+            lafan_tail_path=lafan_tail_path,
             enable_cameras=False,
             camera_render_save_dir='isaac_videos',
             max_episode_length_s=None,
             disable_obs_noise=False,
             disable_domain_randomization=False,
-            relative_config_path='exp/bfm_zero/bfm_zero_taks_t1',
+            relative_config_path=relative_config_path,
             include_last_action=True,
-            hydra_overrides=['robot=taks_t1/taks_t1_32dof', 'robot.control.action_scale=0.25', 'robot.control.action_clip_value=5.0', 'robot.control.normalize_action_to=5.0', 'env.config.lie_down_init=True', 'env.config.lie_down_init_prob=0.3'],
+            hydra_overrides=hydra_overrides,
             context_length=None,
             include_dr_info=False,
             included_dr_obs_names=None,
@@ -847,12 +860,12 @@ def train_bfm_zero_taks_t1():
             make_config_g1env_compatible=False,
             root_height_obs=True
         ),
-        work_dir='results/bfmzero-taks-t1',
-        seed=4728,
-        online_parallel_envs=1024,
-        log_every_updates=384000,
+        work_dir=_work_dir,
+        seed=seed,
+        online_parallel_envs=num_envs,
+        log_every_updates=num_envs * 375,
         num_env_steps=384000000,
-        update_agent_every=1024,
+        update_agent_every=num_envs,
         num_seed_steps=10240,
         num_agent_updates=16,
         checkpoint_every_steps=9600000,
@@ -866,22 +879,65 @@ def train_bfm_zero_taks_t1():
         buffer_size=5120000,
         use_wandb=False,
         wandb_ename='yitangl',
-        wandb_gname='bfmzero-taks-t1',
-        wandb_pname='bfmzero-taks-t1',
+        wandb_gname=wandb_gname,
+        wandb_pname=wandb_pname,
         load_isaac_expert_data=True,
         buffer_device='cuda',
         disable_tqdm=True,
-        evaluations=[HumanoidVerseIsaacTrackingEvaluationConfig(name='HumanoidVerseIsaacTrackingEvaluationConfig', generate_videos=False, videos_dir='videos', video_name_prefix='unknown_agent', name_in_logs='humanoidverse_tracking_eval', env=None, num_envs=1024, n_episodes_per_motion=1)],
+        evaluations=[HumanoidVerseIsaacTrackingEvaluationConfig(
+            name='HumanoidVerseIsaacTrackingEvaluationConfig',
+            generate_videos=False,
+            videos_dir='videos',
+            video_name_prefix='unknown_agent',
+            name_in_logs='humanoidverse_tracking_eval',
+            env=None,
+            num_envs=num_envs,
+            n_episodes_per_motion=1
+        )],
         eval_every_steps=9600000,
         tags={},
     )
+    return cfg
+
+
+def train_bfm_zero_taks_t1(seed: int = 4728, headless: bool = True, num_envs: int = 1024, work_dir: str | None = None):
+    """Taks_T1 32DOF 训练入口（需先生成 lafan_32dof_10s-clipped.pkl）"""
+    cfg = _build_bfm_zero_config(task='taks_t1', seed=seed, headless=headless, num_envs=num_envs, work_dir=work_dir)
     workspace = cfg.build()
     workspace.train()
 
 
 if __name__ == "__main__":
-    # This is the bare minimum CLI interface to launch experiments, but ideally you should
-    # launch your experiments from Python code (e.g., see under "scripts")
-    train_bfm_zero()
+    import argparse
+    parser = argparse.ArgumentParser(description="BFM-Zero 训练")
+    parser.add_argument("--task", type=str, default="g1", choices=["g1", "taks_t1"],
+                        help="训练任务/机器人类型: g1 或 taks_t1")
+    parser.add_argument("--seed", type=int, default=4728, help="随机种子")
+    parser.add_argument("--headless", action="store_true", default=True, help="无头模式(默认开启)")
+    parser.add_argument("--no-headless", dest="headless", action="store_false", help="显示渲染窗口")
+    parser.add_argument("--resume", action="store_true", help="从已有checkpoint恢复(自动检测work_dir)")
+    parser.add_argument("--num-envs", type=int, default=1024, help="并行环境数")
+    parser.add_argument("--work-dir", type=str, default=None, help="工作目录(默认按task自动设置)")
+    parser.add_argument("--env", type=str, default=None,
+                        help="额外hydra env override, 例: env.config.max_episode_length_s=30")
+    args = parser.parse_args()
+
+    cfg = _build_bfm_zero_config(
+        task=args.task,
+        seed=args.seed,
+        headless=args.headless,
+        num_envs=args.num_envs,
+        work_dir=args.work_dir,
+        extra_hydra_overrides=[args.env] if args.env else None,
+    )
+
+    if args.resume:
+        from pathlib import Path
+        ckpt = Path(cfg.work_dir) / "checkpoint"
+        if not ckpt.exists():
+            print(f"[警告] --resume 但未找到checkpoint: {ckpt}")
+
+    workspace = cfg.build()
+    workspace.train()
 
 # uv run --no-cache -m humanoidverse.meta_online_entry_point

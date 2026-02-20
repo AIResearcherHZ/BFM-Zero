@@ -22,9 +22,11 @@ else:
     HUMANOIDVERSE_DIR = Path(__file__).resolve().parent
 
 
-def main(model_folder: Path, data_path: Path | None = None, headless: bool = True, device="cuda", simulator: str = "isaacsim", save_mp4: bool=False, disable_dr: bool = False, disable_obs_noise: bool = False, motion_list: list[int] = [25]):
+def main(model_folder: Path, data_path: Path | None = None, headless: bool = True, device="cuda", simulator: str = "isaacsim", save_mp4: bool=False, disable_dr: bool = False, disable_obs_noise: bool = False, motion_list: list[int] = [25], task: str | None = None, seed: int | None = None):
     # motion_list: motion ids to evaluate (default [25])
-    
+    if seed is not None:
+        import random
+        random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
     model_folder = Path(model_folder)
 
     model = load_model_from_checkpoint_dir(model_folder / "checkpoint", device=device)

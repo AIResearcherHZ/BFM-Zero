@@ -52,7 +52,7 @@ class Humanoid_Batch:
         self.dof_axis = []
 
         joints = sorted([j.attrib['name'] for j in tree.getroot().find("worldbody").findall('.//joint')])
-        motors = sorted([m.attrib['name'] for m in tree.getroot().find("actuator").getchildren()])
+        motors = sorted([m.attrib['name'] for m in tree.getroot().find("actuator").getchildren() if 'name' in m.attrib])
         
         assert len(motors) > 0, "No motors found in the mjcf file"
         

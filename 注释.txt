@@ -89,12 +89,60 @@ pip install -i https://mirrors.aliyun.com/pypi/simple/ "dm-control==1.0.31"
 pip install -e . --no-deps -i https://mirrors.aliyun.com/pypi/simple/
 
 【8. 训练 (用 python 替代 uv run python)】
+# G1 默认训练
 python -m humanoidverse.train
+# 指定task/seed/headless/resume等参数
+python -m humanoidverse.train --task g1 --seed 42 --headless
+python -m humanoidverse.train --task taks_t1 --seed 42 --num-envs 512 --work-dir results/my_run
+python -m humanoidverse.train --task taks_t1 --resume
+python -m humanoidverse.train --task g1 --no-headless --env env.config.max_episode_length_s=30
+# 参数说明:
+#   --task       训练机器人类型: g1 (默认) 或 taks_t1
+#   --seed       随机种子 (默认 4728)
+#   --headless   无头模式, 默认开启; 用 --no-headless 打开渲染窗口
+#   --resume     从 work_dir/checkpoint 恢复 (自动检测)
+#   --num-envs   并行环境数 (默认 1024)
+#   --work-dir   训练结果保存目录 (默认按task自动设置)
+#   --env        额外 hydra override, 例 env.config.max_episode_length_s=30
 
 【9. 推理】
+# 基本用法 (--no-headless 开启渲染, --save_mp4 保存视频)
 python -m humanoidverse.tracking_inference --model_folder /path/to/model --no-headless --save_mp4
 python -m humanoidverse.goal_inference --model_folder /path/to/model --save_mp4
 python -m humanoidverse.reward_inference --model_folder /path/to/model --save_mp4
+# 完整参数示例
+python -m humanoidverse.tracking_inference \
+    --model_folder /path/to/model \
+    --task taks_t1 \
+    --seed 42 \
+    --headless \
+    --save_mp4 \
+    --device cuda \
+    --simulator isaacsim \
+    --disable_dr \
+    --motion_list 0 1 5
+python -m humanoidverse.goal_inference \
+    --model_folder /path/to/model \
+    --task taks_t1 \
+    --seed 42 \
+    --no-headless \
+    --save_mp4 \
+    --episode_len 300
+python -m humanoidverse.reward_inference \
+    --model_folder /path/to/model \
+    --task taks_t1 \
+    --seed 42 \
+    --save_mp4 \
+    --episode_length 300
+# 参数说明 (推理共用):
+#   --task          机器人类型覆盖: g1 或 taks_t1 (默认从模型config自动检测)
+#   --seed          随机种子
+#   --headless      无头模式 (默认 True); --no-headless 打开渲染窗口
+#   --save_mp4      保存推理视频
+#   --device        计算设备 (默认 cuda)
+#   --simulator     模拟器类型 (默认 isaacsim)
+#   --disable_dr    关闭域随机化
+#   --data_path     手动指定 lafan 数据路径
 
 【注意事项】
 - Isaac Sim / Isaac Lab 只支持 Linux

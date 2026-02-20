@@ -24,8 +24,13 @@ else:
     HUMANOIDVERSE_DIR = Path(__file__).parent.parent.parent
 
 
-def main(model_folder: Path, data_path: Path | None = None, headless: bool = True, device="cuda", simulator: str = "isaacsim", save_mp4: bool=False, disable_dr: bool = False, disable_obs_noise: bool = False, episode_len: int = 500, video_folder: str | None = None):
+def main(model_folder: Path, data_path: Path | None = None, headless: bool = True, device="cuda", simulator: str = "isaacsim", save_mp4: bool=False, disable_dr: bool = False, disable_obs_noise: bool = False, episode_len: int = 500, video_folder: str | None = None, task: str | None = None, seed: int | None = None):
 
+    if seed is not None:
+        import random
+        import numpy as _np
+        import torch as _torch
+        random.seed(seed); _np.random.seed(seed); _torch.manual_seed(seed)
     model_folder = Path(model_folder)
     video_folder = Path(video_folder) if video_folder is not None else model_folder / "goal_inference" / "videos"
     video_folder.mkdir(parents=True, exist_ok=True)
@@ -86,8 +91,8 @@ def main(model_folder: Path, data_path: Path | None = None, headless: bool = Tru
     print(env.config.simulator)
     print("-"*80)
     
-    # 根据机器人类型优先搜索对应目录的goal_frames
-    _is_taks = any("taks" in o.lower() for o in _hydra_overrides if o.startswith("robot="))
+    # --task参数优先于自动检测
+    _is_taks = ("taks" in task.lower() if task else any("taks" in o.lower() for o in _hydra_overrides if o.startswith("robot=")))
     if _is_taks:
         goal_json_paths = [
             HUMANOIDVERSE_DIR / "data" / "robots" / "Taks_T1" / "goal_frames_lafan29dof.json",

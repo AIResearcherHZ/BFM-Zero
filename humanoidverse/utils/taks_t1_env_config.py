@@ -47,8 +47,8 @@ class TaksT1EnvConfig(G1EnvConfig):
 
     @property
     def object_class(self):
-        from humanoidverse.envs.g1_env_helper.robot import G1Env
-        return G1Env
+        from humanoidverse.envs.taks_t1_env_helper.robot import TaksT1Env
+        return TaksT1Env
 
 
 class TaksT1EnvRandConfig(TaksT1EnvConfig):
@@ -57,8 +57,8 @@ class TaksT1EnvRandConfig(TaksT1EnvConfig):
 
     @property
     def object_class(self):
-        from humanoidverse.envs.g1_env_helper.robot_random import G1EnvRand
-        return G1EnvRand
+        from humanoidverse.envs.taks_t1_env_helper.robot_random import TaksT1EnvRand
+        return TaksT1EnvRand
 
 
 TaksT1EnvConfigsType = tp.Union[TaksT1EnvConfig, TaksT1EnvRandConfig]

@@ -639,7 +639,12 @@ class HumanoidVerseIsaacConfig(BaseConfig):
         cfg.env.config.save_rendering_dir = self.camera_render_save_dir
         cfg.robot.asset.asset_root = cfg.robot.asset.asset_root.replace("humanoidverse", HUMANOIDVERSE_DIR)
         cfg.robot.motion.asset.assetRoot = cfg.robot.motion.asset.assetRoot.replace("humanoidverse", HUMANOIDVERSE_DIR)
-        cfg.robot.motion.motion_file = self.lafan_tail_path
+        _tail = self.lafan_tail_path
+        if not os.path.isabs(_tail):
+            _tail = _tail.replace("humanoidverse", HUMANOIDVERSE_DIR, 1)
+            if not os.path.isabs(_tail):
+                _tail = str(Path(HUMANOIDVERSE_DIR).parent / _tail)
+        cfg.robot.motion.motion_file = _tail
 
         # This sets obs/action dims etc
         pre_process_config(cfg)
